@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ProductModal from "./ProductModal";
 import { toast } from "react-toastify";
 
@@ -10,26 +10,59 @@ function ProductTable() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const logoutTimer = useRef(null);
 
   useEffect(() => {
     localStorage.setItem("products", JSON.stringify(products));
   }, [products]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      startLogoutTimer();
+    } else {
+      clearLogoutTimer();
+    }
+  }, [isAdmin]);
+
+  const startLogoutTimer = () => {
+    clearLogoutTimer(); // Clear any existing timers
+    logoutTimer.current = setTimeout(() => {
+      setIsAdmin(false);
+      toast.info("You have been logged out due to inactivity.");
+    }, 5 * 60 * 1000); // 5 minutes
+  };
+
+  const clearLogoutTimer = () => {
+    if (logoutTimer.current) {
+      clearTimeout(logoutTimer.current);
+    }
+  };
 
   const handleAdminLogin = () => {
     const password = prompt("Enter Admin Password:");
     if (password === "Products") {
       setIsAdmin(true);
       toast.success("Logged in as Admin!");
+      startLogoutTimer();
     } else {
       toast.error("Invalid password!");
     }
   };
 
+  const handleAdminLogout = () => {
+    setIsAdmin(false);
+    clearLogoutTimer();
+    toast.info("Logged out successfully!");
+  };
+
   const handleRemove = (id) => {
+    if (!isAdmin) {
+      toast.error("Admin access required!");
+      return;
+    }
+
     const product = products.find((p) => p.id === id);
-    const action = prompt(
-      `Enter quantity to remove or type "all" to delete ${product.name}:`
-    );
+    const action = prompt(`Enter quantity to remove or type "all" to delete ${product.name}:`);
 
     if (action === "all") {
       setProducts(products.filter((p) => p.id !== id));
@@ -39,9 +72,7 @@ function ProductTable() {
       if (product.quantity >= quantityToRemove) {
         setProducts(
           products.map((p) =>
-            p.id === id
-              ? { ...p, quantity: p.quantity - quantityToRemove }
-              : p
+            p.id === id ? { ...p, quantity: p.quantity - quantityToRemove } : p
           )
         );
         toast.success(`Removed ${quantityToRemove} of ${product.name}!`);
@@ -54,6 +85,11 @@ function ProductTable() {
   };
 
   const handleAddUpdate = (product) => {
+    if (!isAdmin) {
+      toast.error("Admin access required!");
+      return;
+    }
+
     if (product.id) {
       setProducts(
         products.map((p) => (p.id === product.id ? { ...p, ...product, date: new Date().toLocaleDateString() } : p))
@@ -70,6 +106,10 @@ function ProductTable() {
   };
 
   const openModal = (product = null) => {
+    if (!isAdmin) {
+      toast.error("Admin access required!");
+      return;
+    }
     setEditProduct(product);
     setIsModalOpen(true);
   };
@@ -77,16 +117,26 @@ function ProductTable() {
   return (
     <div className="container mx-auto p-4">
       <div className="mb-4 flex flex-col sm:flex-row justify-between items-center">
-        <button
-          onClick={handleAdminLogin}
-          className="bg-blue-500 text-white px-4 py-2 rounded mb-2 sm:mb-0"
-        >
-          {isAdmin ? "Admin (Logged In)" : "Login as Admin"}
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={handleAdminLogin}
+            className="bg-blue-500 text-white px-4 py-2 rounded mb-2 sm:mb-0"
+          >
+            {isAdmin ? "Admin (Logged In)" : "Login as Admin"}
+          </button>
+          {isAdmin && (
+            <button
+              onClick={handleAdminLogout}
+              className="bg-red-500 text-white px-4 py-2 rounded cursor-pointer"
+            >
+              Logout
+            </button>
+          )}
+        </div>
         {isAdmin && (
           <button
             onClick={() => openModal()}
-            className="bg-green-500 text-white px-4 py-2 rounded"
+            className="bg-green-500 text-white px-4 py-2 rounded cursor-pointer"
           >
             Add Product
           </button>
@@ -111,24 +161,26 @@ function ProductTable() {
               <tr key={product.id}>
                 <td className="border px-4 py-2">{product.id}</td>
                 <td className="border px-4 py-2">{product.name}</td>
-                <td className="border px-4 py-2">${product.price}</td>
+                <td className="border px-4 py-2">₦{product.price}</td>
                 <td className="border px-4 py-2">{product.quantity}</td>
-                <td className="border px-4 py-2">${product.price * product.quantity}</td>
+                <td className="border px-4 py-2">₦{product.price * product.quantity}</td>
                 <td className="border px-4 py-2">{product.date}</td>
                 <td className="border px-4 py-2 space-x-2">
-                  <button
-                    onClick={() => handleRemove(product.id)}
-                    className="bg-red-500 text-white px-2 py-1 rounded"
-                  >
-                    Remove
-                  </button>
                   {isAdmin && (
-                    <button
-                      onClick={() => openModal(product)}
-                      className="bg-yellow-500 text-white px-2 py-1 rounded"
-                    >
-                      Update
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleRemove(product.id)}
+                        className="bg-red-500 text-white px-2 py-1 rounded cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                      <button
+                        onClick={() => openModal(product)}
+                        className="bg-yellow-500 text-white px-2 py-1 rounded cursor-pointer"
+                      >
+                        Update
+                      </button>
+                    </>
                   )}
                 </td>
               </tr>
