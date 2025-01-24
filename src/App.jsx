@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import ProductTable from './components/ProductTable';
 import SalesTable from './components/SalesTable';
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const App = () => {
   return (
@@ -19,6 +21,7 @@ const App = () => {
           <Route path="/sales" element={<SalesTable />} />
         </Routes>
       </div>
+      <ToastContainer />
     </Router>
   );
 };
